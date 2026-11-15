@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Poesía v2 — preview</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%;
+    background: #08040f;
+    overflow: hidden;
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    color: #e8e2ff;
+  }
+
+  #game-bg {
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(circle at 30% 40%, rgba(60, 20, 90, 0.5) 0%, transparent 55%),
+      radial-gradient(circle at 70% 60%, rgba(90, 20, 60, 0.4) 0%, transparent 55%),
+      linear-gradient(180deg, #0b0616 0%, #180a24 100%);
+    z-index: 0;
+  }
+
+  .particle {
+    position: fixed;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 1;
+    animation: float linear infinite;
+  }
+  @keyframes float {
+    0%   { transform: translate(0, 0); opacity: 0.9; }
+    100% { transform: translate(60px, -120px); opacity: 0; }
+  }
+
+  #menu {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 620px;
+    height: 540px;
+    background: rgba(10, 5, 20, 0.94);
+    border: 1px solid rgba(140, 60, 255, 0.55);
+    border-radius: 12px;
+    box-shadow:
+      0 0 40px rgba(140, 60, 255, 0.35),
+      0 0 80px rgba(90, 20, 180, 0.2),
+      inset 0 0 30px rgba(90, 20, 180, 0.08);
+    z-index: 10;
+    padding: 18px;
+    overflow: hidden;
+    backdrop-filter: blur(2px);
+  }
+
+  #poesia-title {
+    text-align: center;
+    font-size: 52px;
+    font-weight: 700;
+    letter-spacing: 4px;
+    margin-top: 6px;
+    background: linear-gradient(90deg,
+      #ff3b5c, #ff9d3b, #ffe23b, #5cff7a, #3bffe0, #3b8bff, #a03bff, #ff3b5c);
+    background-size: 400% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: rainbow-shift 6s linear infinite;
+    filter: drop-shadow(0 0 12px rgba(180, 80, 255, 0.7))
+            drop-shadow(0 0 24px rgba(120, 40, 220, 0.5));
+  }
+  @keyframes rainbow-shift {
+    0%   { background-position: 0% 50%; }
+    100% { background-position: 400% 50%; }
+  }
+
+  #poesia-sub {
+    text-align: center;
+    color: rgba(180, 170, 210, 0.75);
+    font-size: 13px;
+    margin-top: 4px;
+    letter-spacing: 1px;
+  }
+
+  #separator-top {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(140, 60, 255, 0.6), transparent);
+    margin: 14px 0 12px 0;
+  }
+
+  #tabs {
+    display: flex;
+    gap: 2px;
+    border-bottom: 1px solid rgba(140, 60, 255, 0.25);
+    margin-bottom: 14px;
+    overflow-x: auto;
+  }
+  .tab {
+    padding: 8px 16px;
+    background: rgba(25, 12, 45, 0.7);
+    color: rgba(200, 190, 230, 0.8);
+    border: none;
+    border-radius: 8px 8px 0 0;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.15s ease;
+    letter-spacing: 0.5px;
+  }
+  .tab:hover {
+    background: rgba(120, 40, 220, 0.5);
+    color: #fff;
+  }
+  .tab.active {
+    background: rgba(140, 60, 255, 0.85);
+    color: #fff;
+    box-shadow: 0 0 12px rgba(140, 60, 255, 0.5);
+  }
+
+  #panel {
+    height: calc(100% - 190px);
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+  #panel::-webkit-scrollbar { width: 6px; }
+  #panel::-webkit-scrollbar-thumb {
+    background: rgba(140, 60, 255, 0.5);
+    border-radius: 3px;
+  }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; animation: fadeIn 0.2s ease; }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    margin-bottom: 6px;
+    background: rgba(25, 12, 45, 0.6);
+    border-radius: 8px;
+    transition: background 0.15s;
+  }
+  .row:hover { background: rgba(40, 20, 70, 0.7); }
+  .row label { font-size: 13px; color: #d8d0f0; }
+
+  .checkbox {
+    width: 18px; height: 18px;
+    background: rgba(15, 8, 30, 0.9);
+    border: 1px solid rgba(140, 60, 255, 0.5);
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .checkbox:hover {
+    border-color: rgba(180, 100, 255, 0.9);
+    background: rgba(60, 20, 100, 0.6);
+  }
+  .checkbox.checked {
+    background: rgba(140, 60, 255, 0.95);
+    border-color: rgba(200, 120, 255, 1);
+  }
+  .checkbox.checked::after {
+    content: '✓';
+    color: #fff;
+    font-size: 14px;
+    font-weight: bold;
+    line-height: 1;
+  }
+
+  .slider-row {
+    padding: 10px;
+    margin-bottom: 6px;
+    background: rgba(25, 12, 45, 0.6);
+    border-radius: 8px;
+  }
+  .slider-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #d8d0f0;
+    margin-bottom: 6px;
+  }
+  .slider-value { color: rgba(180, 140, 255, 1); font-weight: 600; }
+  input[type="range"] {
+    width: 100%;
+    height: 6px;
+    background: rgba(15, 8, 30, 0.9);
+    border-radius: 3px;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px; height: 14px;
+    background: linear-gradient(135deg, #a855f7, #7c3aed);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(168, 85, 247, 0.7);
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 14px; height: 14px;
+    background: linear-gradient(135deg, #a855f7, #7c3aed);
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 0 8px rgba(168, 85, 247, 0.7);
+  }
+
+  button.action {
+    width: 100%;
+    padding: 10px;
+    margin-top: 6px;
+    background: rgba(30, 15, 55, 0.9);
+    color: #d8d0f0;
+    border: 1px solid rgba(140, 60, 255, 0.4);
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  button.action:hover {
+    background: rgba(140, 60, 255, 0.6);
+    border-color: rgba(180, 100, 255, 0.9);
+    color: #fff;
+  }
+
+  #ballena-btn {
+    width: 100%;
+    padding: 14px;
+    margin-top: 12px;
+    background: linear-gradient(180deg, rgba(220, 30, 50, 0.9), rgba(160, 15, 30, 0.95));
+    color: #fff;
+    border: 1px solid rgba(255, 80, 100, 0.7);
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    cursor: pointer;
+    animation: pulse-red 2s ease-in-out infinite;
+    text-transform: uppercase;
+  }
+  @keyframes pulse-red {
+    0%, 100% { box-shadow: 0 0 15px rgba(220, 30, 50, 0.5); }
+    50%      { box-shadow: 0 0 35px rgba(255, 60, 80, 0.9), 0 0 60px rgba(220, 30, 50, 0.5); }
+  }
+  #ballena-btn:hover {
+    background: linear-gradient(180deg, rgba(255, 50, 70, 1), rgba(200, 20, 40, 1));
+  }
+
+  .section-header {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: rgba(180, 140, 255, 0.9);
+    margin: 12px 0 8px 0;
+    padding-left: 4px;
+  }
+
+  .info-box {
+    background: rgba(15, 8, 30, 0.7);
+    border: 1px solid rgba(140, 60, 255, 0.25);
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 12px;
+    color: #b8b0d0;
+    line-height: 1.6;
+    margin-bottom: 8px;
+  }
+  .info-box code {
+    color: #d8a0ff;
+    font-family: 'Consolas', monospace;
+    background: rgba(60, 20, 100, 0.4);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  .kv { display: flex; justify-content: space-between; padding: 6px 0; font-size: 12px; }
+  .kv .k { color: rgba(180, 170, 210, 0.7); }
+  .kv .v { color: #d8a0ff; font-family: 'Consolas', monospace; font-weight: 600; }
+
+  .keybind {
+    padding: 4px 10px;
+    background: rgba(140, 60, 255, 0.3);
+    border: 1px solid rgba(140, 60, 255, 0.6);
+    border-radius: 6px;
+    font-size: 12px;
+    font-family: 'Consolas', monospace;
+    color: #e0d0ff;
+  }
+
+  /* status pill */
+  .pill {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: 'Consolas', monospace;
+    letter-spacing: 0.5px;
+  }
+  .pill.ok {
+    background: rgba(50, 220, 90, 0.18);
+    color: #5cff7a;
+    border: 1px solid rgba(50, 220, 90, 0.5);
+  }
+  .pill.warn {
+    background: rgba(255, 60, 80, 0.18);
+    color: #ff5c6f;
+    border: 1px solid rgba(255, 60, 80, 0.5);
+    animation: pulse-warn 1.2s ease-in-out infinite;
+  }
+  @keyframes pulse-warn {
+    0%, 100% { box-shadow: 0 0 0 rgba(255, 60, 80, 0); }
+    50%      { box-shadow: 0 0 15px rgba(255, 60, 80, 0.7); }
+  }
+
+  /* watermark bottom-right */
+  #watermark {
+    position: fixed;
+    bottom: 12px;
+    right: 14px;
+    font-size: 13px;
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    font-weight: 500;
+    letter-spacing: 1px;
+    color: rgba(180, 140, 255, 0.85);
+    text-shadow:
+      0 0 8px rgba(140, 60, 255, 0.7),
+      1px 1px 2px rgba(0, 0, 0, 0.9);
+    pointer-events: none;
+    z-index: 20;
+    animation: watermark-pulse 3s ease-in-out infinite;
+  }
+  @keyframes watermark-pulse {
+    0%, 100% { opacity: 0.75; }
+    50%      { opacity: 1.0; }
+  }
+
+  #hint {
+    position: fixed;
+    bottom: 20px; left: 20px;
+    color: rgba(180, 170, 210, 0.4);
+    font-size: 11px;
+    letter-spacing: 1px;
+    z-index: 5;
+  }
+</style>
+</head>
+<body>
+
+<div id="game-bg"></div>
+
+<div id="menu">
+  <div id="poesia-title">Poesía v2</div>
+  <div id="poesia-sub">built by ollie · for olivia</div>
+  <div id="separator-top"></div>
+
+  <div id="tabs">
+    <button class="tab active" data-tab="aimbot">Aimbot</button>
+    <button class="tab" data-tab="esp">ESP</button>
+    <button class="tab" data-tab="ballena">Ballena</button>
+    <button class="tab" data-tab="stealth">Stealth</button>
+    <button class="tab" data-tab="visuals">Visuals</button>
+    <button class="tab" data-tab="binds">Binds</button>
+    <button class="tab" data-tab="info">Info</button>
+  </div>
+
+  <div id="panel">
+
+    <!-- AIMBOT -->
+    <div class="tab-content active" data-content="aimbot">
+      <div class="row"><label>Enable aimbot</label><div class="checkbox"></div></div>
+      <div class="row"><label>Hold key</label><div class="checkbox checked"></div></div>
+      <div class="slider-row">
+        <div class="slider-label"><span>Aim key</span><span class="slider-value">Mouse5</span></div>
+        <input type="range" min="0" max="4" value="0">
+      </div>
+      <div class="slider-row">
+        <div class="slider-label"><span>Bone</span><span class="slider-value">Head</span></div>
+        <input type="range" min="0" max="2" value="0">
+      </div>
+      <div class="slider-row">
+        <div class="slider-label"><span>FOV</span><span class="slider-value">90 px</span></div>
+        <input type="range" min="10" max="400" value="90">
+      </div>
+      <div class="slider-row">
+        <div class="slider-label"><span>Smooth</span><span class="slider-value">2.5</span></div>
+        <input type="range" min="1" max="20" step="0.1" value="2.5">
+      </div>
+      <div class="row"><label>Draw FOV circle</label><div class="checkbox checked"></div></div>
+    </div>
+
+    <!-- ESP -->
+    <div class="tab-content" data-content="esp">
+      <div class="row"><label>Enable ESP</label><div class="checkbox checked"></div></div>
+      <div class="row"><label>2D box</label><div class="checkbox checked"></div></div>
+      <div class="row"><label>Corner box</label><div class="checkbox"></div></div>
+      <div class="row"><label>Name</label><div class="checkbox checked"></div></div>
+      <div class="row"><label>Health bar</label><div class="checkbox checked"></div></div>
+      <div class="row"><label>Armor bar</label><div class="checkbox"></div></div>
+      <div class="row"><label>Distance</label><div class="checkbox checked"></div></div>
+      <div class="row"><label>Skeleton</label><div class="checkbox"></div></div>
+      <div class="slider-row">
+        <div class="slider-label"><span>Max distance</span><span class="slider-value">350m</span></div>
+        <input type="range" min="50" max="1000" value="350">
+      </div>
+    </div>
+
+    <!-- BALLENA -->
+    <div class="tab-content" data-content="ballena">
+      <div class="section-header" style="color:#ff5566">BALLENA — crash module</div>
+      <div class="info-box">
+        Corrompe estado de todos los peds en rango. Solo afecta a otros clientes, no a tu ped local.
+      </div>
+      <div class="row"><label>NaN position bomb</label><div class="checkbox checked"></div></div>
+      <div class="row"><label>NaN velocity bomb</label><div class="checkbox checked"></div></div>
+      <div class="row"><label>NaN health bomb</label><div class="checkbox checked"></div></div>
+      <div class="row"><label>Zero armor</label><div class="checkbox"></div></div>
+      <div class="row"><label>Freeze (velocity = 0)</label><div class="checkbox checked"></div></div>
+      <div class="row"><label>Force ragdoll</label><div class="checkbox checked"></div></div>
+      <div class="row"><label>Force broken anim state</label><div class="checkbox"></div></div>
+      <button id="ballena-btn">Tirar la Ballena</button>
+      <div class="info-box" style="margin-top:12px">
+        Rango: <code>350m</code> · Targets: <code>14 peds</code>
+      </div>
+    </div>
+
+    <!-- STEALTH -->
+    <div class="tab-content" data-content="stealth">
+      <div class="section-header" style="color:#4fffa8">Stealth carousel</div>
+
+      <div class="info-box">
+        <div class="kv"><span class="k">Stub rotations</span><span class="v">37</span></div>
+        <div class="kv"><span class="k">Napse scans</span><span class="v">128</span></div>
+        <div class="kv"><span class="k">Next rotation</span><span class="v">72s</span></div>
+        <div class="kv"><span class="k">Status</span><span class="v"><span class="pill ok">ACTIVE</span></span></div>
+      </div>
+
+      <div class="info-box">
+        <div class="kv" style="padding: 2px 0;">
+          <span class="k">Napse detection</span>
+          <span class="v"><span class="pill ok">CLEAR</span></span>
+        </div>
+      </div>
+
+      <div class="info-box">
+        Cada ciclo el worker escanea módulos cargados buscando 'napse'. Si lo encuentra, la vtable se restaura 0.8-3s al instante.
+      </div>
+      <div class="info-box">
+        Además del carrusel regular 45-120s / ventana ciega 60-200ms.
+      </div>
+
+      <div class="section-header" style="color:#ff5566; margin-top:16px">Napse detected example</div>
+      <div class="info-box" style="border-color:rgba(255,60,80,0.4);">
+        <div class="kv" style="padding: 2px 0;">
+          <span class="k">Napse detection</span>
+          <span class="v"><span class="pill warn">HIDING</span></span>
+        </div>
+        <div class="kv" style="padding: 2px 0;">
+          <span class="k">Status</span>
+          <span class="v" style="color:#ff5c6f;">vtable restored · 1.4s left</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- VISUALS -->
+    <div class="tab-content" data-content="visuals">
+      <div class="row"><label>Rainbow accent</label><div class="checkbox checked"></div></div>
+      <div class="slider-row">
+        <div class="slider-label"><span>Menu opacity</span><span class="slider-value">1.00</span></div>
+        <input type="range" min="0.3" max="1" step="0.01" value="1">
+      </div>
+      <button class="action">Reset window size</button>
+    </div>
+
+    <!-- BINDS -->
+    <div class="tab-content" data-content="binds">
+      <div class="section-header" style="color:#e0b8ff">Keybinds</div>
+      <div class="row">
+        <label>Menu toggle</label>
+        <span class="keybind">Insert</span>
+      </div>
+      <div class="row">
+        <label>Panic key</label>
+        <span class="keybind" style="color:#ff8a9a;border-color:rgba(255,80,100,0.6)">F8</span>
+      </div>
+      <div class="info-box" style="margin-top:12px">
+        Panic desengancha el hook y apaga el cheat. Se detecta durante las ventanas ocultas del carrusel.
+      </div>
+    </div>
+
+    <!-- INFO -->
+    <div class="tab-content" data-content="info">
+      <div class="section-header" style="color:#b0a0ff">Poesía v2 — by Wendigo</div>
+      <div class="info-box">
+        <div class="kv"><span class="k">Local ped</span><span class="v">0x7FF4A2C9</span></div>
+        <div class="kv"><span class="k">Peds tracked</span><span class="v">14</span></div>
+        <div class="kv"><span class="k">Ballena</span><span class="v" style="color:#8a8a8a">off</span></div>
+        <div class="kv"><span class="k">Napse</span><span class="v"><span class="pill ok">clear</span></span></div>
+        <div class="kv"><span class="k">Menu key</span><span class="v">Insert</span></div>
+        <div class="kv"><span class="k">Panic key</span><span class="v">F8</span></div>
+        <div class="kv"><span class="k">Rotations</span><span class="v">37</span></div>
+        <div class="kv"><span class="k">Accent phase</span><span class="v">3.42</span></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="watermark">by Wendigo</div>
+
+<div id="hint">preview estático — toggles y sliders sin cablear, look exacto del menú in-game</div>
+
+<script>
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      tab.classList.add('active');
+      const target = tab.dataset.tab;
+      document.querySelector(`.tab-content[data-content="${target}"]`).classList.add('active');
+    });
+  });
+
+  document.querySelectorAll('.checkbox').forEach(cb => {
+    cb.addEventListener('click', () => cb.classList.toggle('checked'));
+  });
+
+  document.querySelectorAll('input[type="range"]').forEach(sl => {
+    sl.addEventListener('input', () => {
+      const wrapper = sl.closest('.slider-row');
+      const val = wrapper.querySelector('.slider-value');
+      if (val) val.textContent = sl.value;
+    });
+  });
+
+  const bg = document.getElementById('game-bg');
+  for (let i = 0; i < 40; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const size = 2 + Math.random() * 4;
+    const hue = 260 + Math.random() * 80;
+    p.style.width = size + 'px';
+    p.style.height = size + 'px';
+    p.style.left = Math.random() * 100 + 'vw';
+    p.style.top = Math.random() * 100 + 'vh';
+    p.style.background = `hsla(${hue}, 90%, 70%, ${0.15 + Math.random() * 0.35})`;
+    p.style.boxShadow = `0 0 ${size * 2}px hsla(${hue}, 90%, 70%, 0.6)`;
+    p.style.animationDuration = (15 + Math.random() * 25) + 's';
+    p.style.animationDelay = (-Math.random() * 20) + 's';
+    bg.appendChild(p);
+  }
+</script>
+
+</body>
+</html>
